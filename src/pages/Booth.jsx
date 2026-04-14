@@ -1212,7 +1212,13 @@ export default function Booth() {
 
   useEffect(() => {
     (async () => {
-      const slug = window.location.pathname.split('/').filter(Boolean).pop() || 'demo';
+      // Extrae el slug del evento (ej: 'misXVluana')
+      // Soporta /kiosco/slug, /slug o el hack de GitHub Pages ?/slug
+      const fullPath = window.location.pathname + window.location.search;
+      let slug = fullPath.split('?').pop().split('/').filter(Boolean).pop();
+
+      if (!slug || slug === 'kiosco') slug = 'demo';
+
       const { data: ev } = await supabase.from('events').select('*').eq('slug', slug).single();
       if (ev) {
         setEvent(ev);
