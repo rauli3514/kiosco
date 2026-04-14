@@ -73,6 +73,21 @@ export default function Admin() {
     setSessions(prev => prev.filter(s => s.id !== sessionId));
   };
 
+  const deleteEvent = async (eventId, eventTitle) => {
+    if (!window.confirm(`¿Seguro que querés borrar el evento "${eventTitle}"? Esto eliminará también todos sus trabajos de impresión.`)) return;
+    await supabase.from('print_jobs').delete().eq('event_id', eventId);
+    await supabase.from('event_sessions').delete().eq('event_id', eventId);
+    await supabase.from('event_templates').delete().eq('event_id', eventId);
+    await supabase.from('events').delete().eq('id', eventId);
+    setEvents(prev => prev.filter(e => e.id !== eventId));
+    if (selectedEvent?.id === eventId) setSelectedEvent(null);
+  };
+
+  const deleteJob = async (jobId) => {
+    await supabase.from('print_jobs').delete().eq('id', jobId);
+    setQueue(prev => prev.filter(j => j.id !== jobId));
+  };
+
   const fetchEvents = async () => {
     const { data } = await supabase.from('events').select('*').order('created_at', { ascending: false });
     if (data) setEvents(data);
@@ -237,20 +252,33 @@ export default function Admin() {
         <h3 style={{ fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.05em' }}>Eventos Activos</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto' }}>
           {events.map(ev => (
-            <div 
-              key={ev.id} 
+            <div
+              key={ev.id}
               onClick={() => { setSelectedEvent(ev); setShowCreate(false); }}
               style={{
-                padding: '1rem', 
-                borderRadius: '0.5rem', 
+                padding: '0.875rem 1rem',
+                borderRadius: '0.5rem',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
                 backgroundColor: selectedEvent?.id === ev.id ? '#f1f5f9' : 'transparent',
-                border: selectedEvent?.id === ev.id ? '1px solid #cbd5e1' : '1px solid transparent'
+                border: selectedEvent?.id === ev.id ? '1px solid #cbd5e1' : '1px solid transparent',
+                position: 'relative',
               }}
             >
-              <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{ev.title || ev.slug}</div>
-              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>/{ev.slug}</div>
+              <div style={{ fontWeight: 'bold', fontSize: '0.9rem', paddingRight: '1.5rem' }}>{ev.title || ev.slug}</div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.15rem' }}>/{ev.slug}</div>
+              <button
+                onClick={e => { e.stopPropagation(); deleteEvent(ev.id, ev.title || ev.slug); }}
+                title="Borrar evento"
+                style={{
+                  position: 'absolute', top: '0.75rem', right: '0.75rem',
+                  background: 'transparent', border: 'none', cursor: 'pointer',
+                  color: '#cbd5e1', fontSize: '0.9rem', lineHeight: 1, padding: '2px 4px',
+                  borderRadius: '4px',
+                }}
+                onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                onMouseLeave={e => e.currentTarget.style.color = '#cbd5e1'}
+              >✕</button>
             </div>
           ))}
         </div>
@@ -325,7 +353,19 @@ export default function Admin() {
                       <h2 style={{margin: '0 0 0.25rem 0'}}>Impresiones Entrantes</h2>
                       <p style={{margin: 0, fontSize: '0.8rem', color: '#64748b'}}>{queue.length} trabajos encontrados para este evento</p>
                     </div>
-                    <button onClick={() => fetchQueue(selectedEvent.id)} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '0.5rem 1rem', borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}><RefreshCcw size={14}/> Refrescar</button>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      {queue.length > 0 && (
+                        <button
+                          onClick={async () => {
+                            if (!window.confirm('¿Borrar todos los trabajos de este evento?')) return;
+                            await supabase.from('print_jobs').delete().eq('event_id', selectedEvent.id);
+                            setQueue([]);
+                          }}
+                          style={{ background: '#fee2e2', border: '1px solid #fca5a5', color: '#ef4444', padding: '0.5rem 1rem', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
+                        >🗑 Limpiar todo</button>
+                      )}
+                      <button onClick={() => fetchQueue(selectedEvent.id)} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '0.5rem 1rem', borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}><RefreshCcw size={14}/> Refrescar</button>
+                    </div>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
                     {queue.map(q => {
@@ -340,7 +380,12 @@ export default function Admin() {
                       const sc = statusColors[q.status] || statusColors.pending_render;
                       const previewUrl = q.final_image_url || (q.raw_photo_urls && q.raw_photo_urls[0]);
                       return (
-                        <div key={q.id} style={{ background: '#fff', padding: '1rem', borderRadius: '0.75rem', width: '180px', border: '1px solid #e2e8f0', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+                        <div key={q.id} style={{ background: '#fff', padding: '1rem', borderRadius: '0.75rem', width: '180px', border: '1px solid #e2e8f0', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.07)', position: 'relative' }}>
+                          <button
+                            onClick={() => deleteJob(q.id)}
+                            title="Borrar"
+                            style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: '#fee2e2', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer', color: '#ef4444', fontWeight: 'bold', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+                          >✕</button>
                           {previewUrl ? (
                             <img src={previewUrl} alt="" style={{width: '100%', height: '140px', objectFit: 'cover', borderRadius: '0.5rem', marginBottom: '0.75rem'}} />
                           ) : (
