@@ -79,7 +79,7 @@ export default function Admin() {
   };
 
   const fetchQueue = async (eventId) => {
-    const { data } = await supabase.from('print_queue').select('*').eq('event_id', eventId).order('created_at', { ascending: false });
+    const { data } = await supabase.from('print_jobs').select('*').eq('event_id', eventId).order('created_at', { ascending: false });
     if (data) setQueue(data);
   };
 
@@ -320,19 +320,51 @@ export default function Admin() {
               {/* === TABLA DE COLA === */}
               {activeTab === 'queue' && (
                 <div style={{ padding: '2rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                    <h2 style={{margin: 0}}>Impresiones Entrantes</h2>
-                    <button onClick={() => fetchQueue(selectedEvent.id)} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '0.25rem 0.75rem', borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><RefreshCcw size={14}/> Refrescar</button>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <div>
+                      <h2 style={{margin: '0 0 0.25rem 0'}}>Impresiones Entrantes</h2>
+                      <p style={{margin: 0, fontSize: '0.8rem', color: '#64748b'}}>{queue.length} trabajos encontrados para este evento</p>
+                    </div>
+                    <button onClick={() => fetchQueue(selectedEvent.id)} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '0.5rem 1rem', borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}><RefreshCcw size={14}/> Refrescar</button>
                   </div>
-                  {/* Grilla visual de impresiones (oculta temporalmente para brevedad) */}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-                    {queue.map(q => (
-                       <div key={q.id} style={{ background: '#fff', padding: '1rem', borderRadius: '0.5rem', width: '200px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-                         <img src={q.image_url} alt="" style={{width: '100%', height: '120px', objectFit: 'cover', borderRadius: '0.25rem', marginBottom: '0.5rem'}} />
-                         <strong style={{color: q.status === 'completed' ? 'green' : 'orange'}}>{q.status}</strong>
-                       </div>
-                    ))}
-                    {queue.length === 0 && <p>La cola está limpia por ahora.</p>}
+                    {queue.map(q => {
+                      const statusColors = {
+                        pending_render: { bg: '#fef9c3', text: '#854d0e', label: '⏳ En cola' },
+                        rendering:      { bg: '#dbeafe', text: '#1e40af', label: '⚙️ Procesando' },
+                        pending_print:  { bg: '#d1fae5', text: '#065f46', label: '🖨️ Lista para imprimir' },
+                        printing:       { bg: '#e0e7ff', text: '#3730a3', label: '📄 Imprimiendo' },
+                        completed:      { bg: '#f0fdf4', text: '#166534', label: '✅ Completada' },
+                        error:          { bg: '#fee2e2', text: '#991b1b', label: '❌ Error' },
+                      };
+                      const sc = statusColors[q.status] || statusColors.pending_render;
+                      const previewUrl = q.final_image_url || (q.raw_photo_urls && q.raw_photo_urls[0]);
+                      return (
+                        <div key={q.id} style={{ background: '#fff', padding: '1rem', borderRadius: '0.75rem', width: '180px', border: '1px solid #e2e8f0', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+                          {previewUrl ? (
+                            <img src={previewUrl} alt="" style={{width: '100%', height: '140px', objectFit: 'cover', borderRadius: '0.5rem', marginBottom: '0.75rem'}} />
+                          ) : (
+                            <div style={{width:'100%', height:'140px', background:'#f1f5f9', borderRadius:'0.5rem', marginBottom:'0.75rem', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'2rem'}}>📷</div>
+                          )}
+                          <span style={{ display: 'inline-block', padding: '0.25rem 0.6rem', borderRadius: '99px', fontSize: '0.72rem', fontWeight: 700, background: sc.bg, color: sc.text }}>
+                            {sc.label}
+                          </span>
+                          <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.5rem' }}>
+                            {new Date(q.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                          {q.error_message && (
+                            <div style={{ fontSize: '0.65rem', color: '#ef4444', marginTop: '0.25rem' }}>{q.error_message}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {queue.length === 0 && (
+                      <div style={{ width: '100%', textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
+                        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📭</div>
+                        <p style={{ margin: 0, fontWeight: 600 }}>La cola está vacía</p>
+                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem' }}>Las fotos que saque tu kiosco aparecerán aquí.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

@@ -70,10 +70,10 @@ function Screen({ children, style = {} }) {
   return (
     <div style={{
       background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(24px)',
-      WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.12)',
+      WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.2)',
       borderRadius: '1.5rem', padding: '2rem 1.75rem', width: '100%',
       display: 'flex', flexDirection: 'column', alignItems: 'center',
-      boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
+      boxShadow: '0 24px 60px rgba(0,0,0,0.3)',
       animation: 'fadeIn 0.25s ease-out', ...style
     }}>{children}</div>
   );
@@ -99,11 +99,13 @@ function Btn({ children, color, large, onClick, disabled, full = true }) {
       width: full ? '100%' : 'auto',
       padding: large ? '1rem 1.5rem' : '0.75rem 1.25rem',
       borderRadius: 99, border: 'none',
-      background: disabled ? 'rgba(255,255,255,0.2)' : (color || '#ec4899'),
-      color: '#fff', fontSize: large ? '1.05rem' : '0.9rem', fontWeight: 700,
+      background: disabled ? 'rgba(255,255,255,0.1)' : (color || '#ec4899'),
+      color: (color === '#ffffff' || color === '#fff' || !color) ? '#000' : '#fff',
+      fontSize: large ? '1.05rem' : '0.9rem', fontWeight: 700,
       cursor: disabled ? 'default' : 'pointer',
       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-      boxShadow: disabled ? 'none' : '0 8px 20px rgba(0,0,0,0.25)', marginTop: '0.25rem',
+      boxShadow: disabled ? 'none' : '0 8px 20px rgba(0,0,0,0.2)', marginTop: '0.25rem',
+      textShadow: (color === '#ffffff' || color === '#fff') ? 'none' : '0 1px 2px rgba(0,0,0,0.2)',
     }}>{children}</button>
   );
 }
@@ -179,8 +181,8 @@ function LiveCameraBackground({ active }) {
   );
 }
 
-const H2 = ({ children }) => <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: '0 0 0.4rem', textAlign: 'center', lineHeight: 1.2, color: '#fff' }}>{children}</h2>;
-const Hint = ({ children }) => <p style={{ fontSize: '0.875rem', opacity: 0.65, margin: '0 0 1.5rem', textAlign: 'center', color: '#fff' }}>{children}</p>;
+const H2 = ({ children }) => <h2 style={{ fontSize: '1.4rem', fontWeight: 900, margin: '0 0 0.4rem', textAlign: 'center', lineHeight: 1.2, color: '#fff', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>{children}</h2>;
+const Hint = ({ children }) => <p style={{ fontSize: '0.875rem', opacity: 0.9, margin: '0 0 1.5rem', textAlign: 'center', color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.5)', fontWeight: 500 }}>{children}</p>;
 
 // ═══════════════════════════════════════════════════════════════════
 // ACCESS ENGINE SCREENS
@@ -412,10 +414,10 @@ function StepWelcome({ event, onStart }) {
           zIndex: 1
         }} />
       )}
-      <h1 style={{ fontSize: '1.9rem', fontWeight: 800, margin: '0 0 0.5rem', textAlign: 'center', lineHeight: 1.2, color: '#fff', zIndex: 1 }}>
+      <h1 style={{ fontSize: '1.9rem', fontWeight: 800, margin: '0 0 0.5rem', textAlign: 'center', lineHeight: 1.2, color: '#fff', zIndex: 1, textShadow: '0 2px 15px rgba(0,0,0,0.6)' }}>
         {event.welcome_title || 'Bienvenidos'}
       </h1>
-      <p style={{ fontSize: '1rem', opacity: 0.75, margin: '0 0 2.5rem', textAlign: 'center', color: '#fff', zIndex: 1 }}>
+      <p style={{ fontSize: '1rem', opacity: 0.95, margin: '0 0 2.5rem', textAlign: 'center', color: '#fff', zIndex: 1, textShadow: '0 1px 8px rgba(0,0,0,0.6)', fontWeight: 600 }}>
         {event.welcome_subtitle || 'Llevate tu recuerdo impreso'}
       </p>
       <div style={{ width: '100%', zIndex: 1 }}>
