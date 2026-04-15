@@ -628,6 +628,62 @@ function StepCaptureBooth({ format, photos, primaryColor, onPhotoAdded, onContin
     </Screen>
   );
 }
+function StepEditor({ format, photos, filterName, adjustments, onFilterChange, onAdjustChange, onContinue, onBack, primaryColor }) {
+  const frames = format.frames || PRESETS[format.count] || PRESETS[1];
+  const activeFilter = FILTERS.find(f => f.id === filterName) || FILTERS[0];
+
+  const fullCss = activeFilter.id !== 'none' ? activeFilter.css : 'none';
+
+  return (
+    <Screen>
+      <StepDots current={3} total={3} />
+      <H2>Personaliza tu foto</H2>
+
+      <div style={{
+        width: '100%', maxWidth: 220, aspectRatio: '2/3', position: 'relative',
+        borderRadius: 8, overflow: 'hidden', boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
+        margin: '0 auto 1.25rem',
+        backgroundImage: format.template?.base_image_url ? `url('${format.template.base_image_url}')` : 'none',
+        backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: '#111',
+      }}>
+        {frames.map((f, i) => (
+          <div key={i} style={{
+            position: 'absolute',
+            left: `${f.x}%`, top: `${f.y}%`,
+            width: `${f.w || f.width}%`, height: `${f.h || f.height}%`,
+            backgroundColor: '#fff', padding: '1.5%', boxSizing: 'border-box', overflow: 'hidden',
+          }}>
+            {photos[i] ? (
+              <img src={photos[i].preview} alt="" style={{
+                width: '100%', height: '100%', objectFit: 'cover', display: 'block',
+                filter: fullCss, transition: 'filter 0.3s',
+              }} />
+            ) : <div style={{ width: '100%', height: '100%', background: '#e2e8f0' }} />}
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto', width: '100%', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
+        {FILTERS.map(f => (
+          <button key={f.id} onClick={() => onFilterChange(f.id)} style={{
+            flexShrink: 0, padding: '0.4rem 0.75rem', borderRadius: 99,
+            border: filterName === f.id ? `2px solid ${primaryColor}` : '2px solid rgba(255,255,255,0.2)',
+            background: filterName === f.id ? primaryColor + '33' : 'rgba(255,255,255,0.07)',
+            color: '#fff', fontSize: '0.8rem', fontWeight: filterName === f.id ? 700 : 400,
+            cursor: 'pointer', whiteSpace: 'nowrap',
+          }}>{f.label}</button>
+        ))}
+      </div>
+      
+      <Btn color={primaryColor} large onClick={onContinue} style={{ marginTop: '1rem' }}>Ver Preview Final →</Btn>
+      <BtnBack onClick={onBack} />
+
+      <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: '0.75rem', textAlign: 'center', color: '#fff' }}>
+        Los filtros se aplican en alta calidad al generar la impresión
+      </p>
+    </Screen>
+  );
+}
 
 function StepPreview({ format, photos, filterName, adjustments, stickers, primaryColor, onConfirm, onBack, isSubmitting }) {
   const [guestName, setGuestName] = useState('');
