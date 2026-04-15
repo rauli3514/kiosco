@@ -43,21 +43,15 @@ const drawCover = (ctx, img, x, y, w, h) => {
   ctx.restore();
 };
 
-// ─── Aplicar filtros al ImageData (pixel manipulation) ────────────
-const applyFilter = (ctx, filterName, adjustments, w, h) => {
-  const imageData = ctx.getImageData(0, 0, w, h);
+// ─── Aplicar filtros al ImageData (solo a la foto) ────────────
+const applyFilter = (ctx, filterName, x, y, w, h) => {
+  const imageData = ctx.getImageData(x, y, w, h);
   const data = imageData.data;
-  const { brightness = 0, contrast = 0, saturation = 0 } = adjustments || {};
-
-  // Factor de multiplicación: brightness/contrast/saturation en rango -50..+50
-  const bFactor = 1 + brightness / 100;
-  const cFactor = 1 + contrast / 100;
-  const sFactor = 1 + saturation / 100;
 
   for (let i = 0; i < data.length; i += 4) {
     let r = data[i], g = data[i + 1], b = data[i + 2];
 
-    // 1. Filtro base
+    // Filtro base
     if (filterName === 'bw') {
       const gray = 0.299 * r + 0.587 * g + 0.114 * b;
       r = g = b = gray;
@@ -76,27 +70,20 @@ const applyFilter = (ctx, filterName, adjustments, w, h) => {
       r *= 1.05; g *= 1.05; b *= 1.05;
     }
 
-    // 2. Brightness
-    r *= bFactor; g *= bFactor; b *= bFactor;
-
-    // 3. Contrast
-    r = ((r / 255 - 0.5) * cFactor + 0.5) * 255;
-    g = ((g / 255 - 0.5) * cFactor + 0.5) * 255;
-    b = ((b / 255 - 0.5) * cFactor + 0.5) * 255;
-
-    // 4. Saturation
-    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    r = luminance + (r - luminance) * sFactor;
-    g = luminance + (g - luminance) * sFactor;
-    b = luminance + (b - luminance) * sFactor;
-
     // Clamping
     data[i]     = Math.max(0, Math.min(255, r));
     data[i + 1] = Math.max(0, Math.min(255, g));
     data[i + 2] = Math.max(0, Math.min(255, b));
   }
 
-  ctx.putImageData(imageData, 0, 0);
+  ctx.putImageData(imageData, x, y);
+};
+
+// Utilidad para descargar la imagen de emoji (Twemoji) y evitar falla de render de color en Canvas
+const getTwemojiUrl = (emoji) => {
+  const codePoints = Array.from(emoji).map(c => c.codePointAt(0).toString(16));
+  const filtered = codePoints.filter(c => c !== 'fe0f'); // Remover variation selector
+  return `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${filtered.join('-')}.png`;
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -147,38 +134,52 @@ const renderJob = async (job) => {
     ctx.fillRect(pX, pY, pW, pH);
     ctx.restore();
 
-    if (photoUrls[i]) {
+      if (photoUrls[i]) {
       try {
         const photoBuf = await downloadFile(photoUrls[i]);
         const photo = await loadImage(photoBuf);
-        drawCover(ctx, photo, pX + BORDER_PX, pY + BORDER_PX, pW - BORDER_PX * 2, pH - BORDER_PX * 2);
-        console.log(`   ✅ Foto ${i + 1} colocada en frame`);
+        
+        const photoX = Math.floor(pX + BORDER_PX);
+        const photoY = Math.floor(pY + BORDER_PX);
+        const photoW = Math.floor(pW - BORDER_PX * 2);
+        const photoH = Math.floor(pH - BORDER_PX * 2);
+
+        drawCover(ctx, photo, photoX, photoY, photoW, photoH);
+        
+        // ─── Aplicar Filtro solo a la foto ──────────────
+        const filterName = job.filter_name || 'none';
+        if (filterName !== 'none') {
+          applyFilter(ctx, filterName, photoX, photoY, photoW, photoH);
+          console.log(`   ✅ Filtro "${filterName}" aplicado a la foto ${i + 1}`);
+        } else {
+          console.log(`   ✅ Foto ${i + 1} colocada en frame`);
+        }
 
         // ─── Renderizar Stickers sobre la foto ─────────────────
         const stickers = (job.stickers_data || []).filter(s => s.photoIdx === i);
-        stickers.forEach(s => {
-          ctx.save();
-          // Dimensiones proporcionales (90px es el base en el editor)
-          const sSize = 90 * (s.scale || 1);
-          ctx.font = `${sSize}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          // Posición relativa al área de la foto (sin contar el borde blanco del frame)
-          const sx = pX + BORDER_PX + (s.x / 100) * (pW - BORDER_PX * 2);
-          const sy = pY + BORDER_PX + (s.y / 100) * (pH - BORDER_PX * 2);
-          ctx.fillText(s.emoji, sx, sy);
-          ctx.restore();
-        });
-      } catch (e) { console.warn(`   ⚠️  No se cargó foto ${i + 1}:`, e.message); }
+        for (const s of stickers) {
+          try {
+            const url = getTwemojiUrl(s.emoji);
+            const stickerBuf = await downloadFile(url);
+            const stickerImg = await loadImage(stickerBuf);
+            
+            // Calculamos el tamaño: ~12% del ancho del frame multiplicado por la escala manual
+            const baseSize = photoW * 0.12; 
+            const sSize = baseSize * (s.scale || 1);
+            
+            const sx = photoX + (s.x / 100) * photoW;
+            const sy = photoY + (s.y / 100) * photoH;
+            
+            // Draw image centered on (sx, sy)
+            ctx.drawImage(stickerImg, sx - sSize / 2, sy - sSize / 2, sSize, sSize);
+          } catch (emojiErr) {
+            console.warn(`   ⚠️  No se pudo cargar el sticker:`, emojiErr.message);
+          }
+        }
+      } catch (e) { 
+        console.warn(`   ⚠️  No se cargó la foto ${i + 1}:`, e.message); 
+      }
     }
-  }
-
-  // 4. Aplicar filtros + ajustes pixel-accurate
-  const filterName = job.filter_name || 'none';
-  const adjustments = job.adjustments || { brightness: 0, contrast: 0, saturation: 0 };
-  if (filterName !== 'none' || adjustments.brightness !== 0 || adjustments.contrast !== 0 || adjustments.saturation !== 0) {
-    applyFilter(ctx, filterName, adjustments, TARGET_W, TARGET_H);
-    console.log(`   ✅ Filtro "${filterName}" aplicado`);
   }
 
   // 5. Exportar como JPEG buffer

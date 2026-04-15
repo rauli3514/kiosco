@@ -562,13 +562,8 @@ function StepEditor({ format, photos, filterName, adjustments, onFilterChange, o
   const frames = format.frames || PRESETS[format.count] || PRESETS[1];
   const activeFilter = FILTERS.find(f => f.id === filterName) || FILTERS[0];
 
-  // CSS completo del filtro + ajustes
-  const fullCss = [
-    activeFilter.id !== 'none' ? activeFilter.css : '',
-    `brightness(${1 + adjustments.brightness / 100})`,
-    `contrast(${1 + adjustments.contrast / 100})`,
-    `saturate(${1 + adjustments.saturation / 100})`,
-  ].filter(Boolean).join(' ') || 'none';
+  // CSS completo del filtro
+  const fullCss = activeFilter.id !== 'none' ? activeFilter.css : 'none';
 
   return (
     <Screen>
@@ -613,27 +608,9 @@ function StepEditor({ format, photos, filterName, adjustments, onFilterChange, o
         ))}
       </div>
 
-      {/* Sliders */}
-      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.25rem' }}>
-        {[
-          { key: 'brightness', label: '☀️ Brillo' },
-          { key: 'contrast',   label: '◑ Contraste' },
-          { key: 'saturation', label: '🎨 Saturación' },
-        ].map(({ key, label }) => (
-          <div key={key}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', opacity: 0.7, marginBottom: 4, color: '#fff' }}>
-              <span>{label}</span>
-              <span>{adjustments[key] > 0 ? '+' : ''}{adjustments[key]}</span>
-            </div>
-            <input type="range" min="-50" max="50" step="1"
-              value={adjustments[key]}
-              onChange={e => onAdjustChange(key, parseInt(e.target.value))}
-              style={{ width: '100%', accentColor: primaryColor }} />
-          </div>
-        ))}
-      </div>
-
-      <Btn color={primaryColor} large onClick={onContinue}>Ver Preview Final →</Btn>
+      {/* Sliders removidos a pedido del usuario. Solo quedan los pre-filtros. */}
+      
+      <Btn color={primaryColor} large onClick={onContinue} style={{ marginTop: '1rem' }}>Ver Preview Final →</Btn>
       <BtnBack onClick={onBack} />
 
       <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: '0.75rem', textAlign: 'center', color: '#fff' }}>
