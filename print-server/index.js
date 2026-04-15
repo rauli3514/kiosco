@@ -266,8 +266,13 @@ const checkAndProcess = async () => {
         const { error: upErr } = await supabase.storage.from('kiosco-prints').upload(fileName, imageBuffer, { contentType: 'image/jpeg', upsert: true });
         if (upErr) throw upErr;
         const { data: urlData } = supabase.storage.from('kiosco-prints').getPublicUrl(fileName);
-        await supabase.from('print_jobs').update({ status: 'pending_print', final_image_url: urlData.publicUrl, updated_at: new Date().toISOString() }).eq('id', job.id);
-        console.log(`✅ Render completado`);
+
+        // Verificamos si debemos imprimir automáticamente
+        const { data: eventData } = await supabase.from('events').select('print_auto_start').eq('id', job.event_id).single();
+        const nextStatus = eventData?.print_auto_start ? 'approved_for_print' : 'pending_print';
+
+        await supabase.from('print_jobs').update({ status: nextStatus, final_image_url: urlData.publicUrl, updated_at: new Date().toISOString() }).eq('id', job.id);
+        console.log(`✅ Render completado -> Estado: ${nextStatus}`);
       } catch (e) {
         console.error('❌ Error en render:', e.message);
         await supabase.from('print_jobs').update({ status: 'error', error_message: e.message, updated_at: new Date().toISOString() }).eq('id', job.id);
@@ -278,7 +283,7 @@ const checkAndProcess = async () => {
     const { data: printJobs } = await supabase
       .from('print_jobs')
       .select('*, events(selected_printer_name, selected_paper_size, print_scale, print_offset_x, print_offset_y)')
-      .eq('status', 'pending_print')
+      .eq('status', 'approved_for_print')
       .order('created_at', { ascending: true })
       .limit(1);
 

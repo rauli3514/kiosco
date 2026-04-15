@@ -376,35 +376,51 @@ export default function Admin() {
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
                     {queue.map(q => {
                       const statusColors = {
-                        pending_render: { bg: '#fef9c3', text: '#854d0e', label: '⏳ En cola' },
+                        pending_render: { bg: '#fef9c3', text: '#854d0e', label: '⏳ Renderizando' },
                         rendering:      { bg: '#dbeafe', text: '#1e40af', label: '⚙️ Procesando' },
-                        pending_print:  { bg: '#d1fae5', text: '#065f46', label: '🖨️ Lista para imprimir' },
-                        printing:       { bg: '#e0e7ff', text: '#3730a3', label: '📄 Imprimiendo' },
+                        pending_print:  { bg: '#f1f5f9', text: '#475569', label: '✋ Esperando OK' },
+                        approved_for_print: { bg: '#d1fae5', text: '#065f46', label: '🖨️ Imprimiendo...' },
+                        printing:       { bg: '#e0e7ff', text: '#3730a3', label: '📄 Enviado a impresora' },
                         completed:      { bg: '#f0fdf4', text: '#166534', label: '✅ Completada' },
                         error:          { bg: '#fee2e2', text: '#991b1b', label: '❌ Error' },
                       };
                       const sc = statusColors[q.status] || statusColors.pending_render;
                       const previewUrl = q.final_image_url || (q.raw_photo_urls && q.raw_photo_urls[0]);
                       return (
-                        <div key={q.id} style={{ background: '#fff', padding: '1rem', borderRadius: '0.75rem', width: '180px', border: '1px solid #e2e8f0', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.07)', position: 'relative' }}>
+                        <div key={q.id} style={{ background: '#fff', padding: '1rem', borderRadius: '0.75rem', width: '180px', border: '1px solid #e2e8f0', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.07)', position: 'relative', display: 'flex', flexDirection: 'column' }}>
                           <button
                             onClick={() => deleteJob(q.id)}
                             title="Borrar"
-                            style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: '#fee2e2', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer', color: '#ef4444', fontWeight: 'bold', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+                            style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: '#fee2e2', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer', color: '#ef4444', fontWeight: 'bold', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, zIndex: 5 }}
                           >✕</button>
                           {previewUrl ? (
                             <img src={previewUrl} alt="" style={{width: '100%', height: '140px', objectFit: 'cover', borderRadius: '0.5rem', marginBottom: '0.75rem'}} />
                           ) : (
                             <div style={{width:'100%', height:'140px', background:'#f1f5f9', borderRadius:'0.5rem', marginBottom:'0.75rem', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'2rem'}}>📷</div>
                           )}
-                          <span style={{ display: 'inline-block', padding: '0.25rem 0.6rem', borderRadius: '99px', fontSize: '0.72rem', fontWeight: 700, background: sc.bg, color: sc.text }}>
+                          <span style={{ display: 'inline-block', padding: '0.25rem 0.6rem', borderRadius: '99px', fontSize: '0.72rem', fontWeight: 700, background: sc.bg, color: sc.text, marginBottom: '0.5rem' }}>
                             {sc.label}
                           </span>
-                          <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.5rem' }}>
+                          
+                          {q.status === 'pending_print' && (
+                            <button
+                              onClick={async () => {
+                                await supabase.from('print_jobs').update({ status: 'approved_for_print' }).eq('id', q.id);
+                                fetchQueue(selectedEvent.id);
+                              }}
+                              style={{
+                                background: '#3b82f6', color: '#fff', border: 'none', padding: '0.4rem 0.5rem', borderRadius: '0.4rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', marginBottom: '0.5rem'
+                              }}
+                            >
+                              <RefreshCcw size={12}/> Aprobar Impresión
+                            </button>
+                          )}
+
+                          <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: 'auto' }}>
                             {new Date(q.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                           </div>
                           {q.error_message && (
-                            <div style={{ fontSize: '0.65rem', color: '#ef4444', marginTop: '0.25rem' }}>{q.error_message}</div>
+                            <div style={{ fontSize: '0.65rem', color: '#ef4444', marginTop: '0.25rem', wordBreak: 'break-all' }}>{q.error_message}</div>
                           )}
                         </div>
                       );
@@ -637,10 +653,10 @@ export default function Admin() {
 
                         {/* Impresora + Límite */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.5rem' }}>
-                          <div>
+                          <div style={{ gridColumn: 'span 2' }}>
                             <label style={labelStyle}>Impresora Destino</label>
                             <select style={inputStyle} value={selectedEvent.selected_printer_name || ''} onChange={e => updateEventConfigBulk({ selected_printer_name: e.target.value })}>
-                              <option value="">⚙️ Predeterminada del Sistema</option>
+                              <option value="">⚙️ Predeterminada del Sistema / AirPrint</option>
                               {stations.map(s => (s.available_printers || []).map(p => (
                                 <option key={`${s.id}-${p}`} value={p}>🖨 {p}  ({s.name})</option>
                               )))}
@@ -649,12 +665,6 @@ export default function Admin() {
                               <p style={{ fontSize: '0.75rem', color: '#16a34a', marginTop: '0.3rem' }}>✓ {selectedEvent.selected_printer_name}</p>
                             )}
                           </div>
-                          <div>
-                            <label style={labelStyle}>Límite de Impresiones</label>
-                            <input type="number" min="1" max="9999" value={selectedEvent.print_limit || 999} onChange={e => updateEventConfigBulk({ print_limit: parseInt(e.target.value) })} style={inputStyle} />
-                            <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.3rem' }}>999 = sin límite práctico</p>
-                          </div>
-                        </div>
 
                         {/* Formato de papel — tarjetas visuales */}
                         <div style={{ marginBottom: '1.5rem' }}>
