@@ -202,18 +202,22 @@ const getLocalPrinters = () => new Promise((res) => {
 });
 
 const announceStation = async () => {
-  const printers = await getLocalPrinters();
-  const stationName = process.env.STATION_NAME || `Station-${process.platform}-${path.basename(__dirname)}`;
-  
-  const { data, error } = await supabase.from('printer_stations').upsert({
-    name: stationName,
-    available_printers: printers,
-    last_seen: new Date().toISOString(),
-    status: 'online'
-  }, { onConflict: 'name' }).select();
+  try {
+    const printers = await getLocalPrinters();
+    const stationName = process.env.STATION_NAME || `Station-${process.platform}-${path.basename(__dirname)}`;
+    
+    const { data, error } = await supabase.from('printer_stations').upsert({
+      name: stationName,
+      available_printers: printers,
+      last_seen: new Date().toISOString(),
+      status: 'online'
+    }, { onConflict: 'name' }).select();
 
-  if (error) console.error('❌ Error anunciando estación:', error.message);
-  else console.log(`📡 Estación "${stationName}" sincronizada. Impresoras detectadas: ${printers.length}`);
+    if (error) throw error;
+    console.log(`📡 [${new Date().toLocaleTimeString()}] Estación "${stationName}" sincronizada (${printers.length} impresoras)`);
+  } catch (err) {
+    console.error('❌ Error en latido de estación:', err.message);
+  }
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -230,11 +234,12 @@ const sendToPrinter = (filePath, printerName, paperSize, scale = 100, ox = 0, oy
     const p = printerName ? `-P "${printerName}"` : '';
     const m = paperSize ? `-o media=${paperSize}` : '-o media=Custom.4x6in';
     const s = scale !== 100 ? `-o scaling=${scale}` : '';
-    // Los offsets son más complejos en lpr directo, pero scaling suele bastar
     cmd = `lpr ${p} ${m} ${s} "${filePath}"`;
   } else {
-    // Windows fallback
-    cmd = `mspaint /pt "${filePath}"`;
+    // Windows: Usar PowerShell para una impresión más silenciosa y directa
+    // Si hay impresora específica, la seteamos por defecto temporalmente
+    const setPrinter = printerName ? `(New-Object -ComObject WScript.Network).SetDefaultPrinter('${printerName}');` : '';
+    cmd = `powershell -Command "${setPrinter} Start-Process -FilePath '${filePath}' -Verb Print"`;
   }
   
   console.log(`   🖨️  Ejecutando: ${cmd}`);
@@ -245,8 +250,7 @@ const checkAndProcess = async () => {
   if (isWorking) return;
   isWorking = true;
   try {
-    // 1. Refrescar estado de la estación cada cierto tiempo
-    if (Math.random() > 0.95) await announceStation();
+    // El latido ahora corre por fuera en un intervalo fijo
 
     // ── A. Buscar jobs para RENDERIZAR (ya implementado arriba) ──
     const { data: renderJobs } = await supabase
@@ -268,11 +272,19 @@ const checkAndProcess = async () => {
         const { data: urlData } = supabase.storage.from('kiosco-prints').getPublicUrl(fileName);
 
         // Verificamos si debemos imprimir automáticamente
-        const { data: eventData } = await supabase.from('events').select('print_auto_start').eq('id', job.event_id).single();
-        const nextStatus = eventData?.print_auto_start ? 'approved_for_print' : 'pending_print';
+        let shouldAutoPrint = false;
+        if (job.event_id) {
+          const { data: eventData } = await supabase.from('events').select('print_auto_start').eq('id', job.event_id).single();
+          shouldAutoPrint = !!eventData?.print_auto_start;
+        } else {
+          // Si no hay evento (demo), por defecto imprimimos para probar
+          shouldAutoPrint = true;
+        }
+
+        const nextStatus = shouldAutoPrint ? 'approved_for_print' : 'pending_print';
 
         await supabase.from('print_jobs').update({ status: nextStatus, final_image_url: urlData.publicUrl, updated_at: new Date().toISOString() }).eq('id', job.id);
-        console.log(`✅ Render completado -> Estado: ${nextStatus}`);
+        console.log(`✅ Render completado -> Siguiente estado: ${nextStatus}`);
       } catch (e) {
         console.error('❌ Error en render:', e.message);
         await supabase.from('print_jobs').update({ status: 'error', error_message: e.message, updated_at: new Date().toISOString() }).eq('id', job.id);
@@ -327,5 +339,6 @@ const checkAndProcess = async () => {
 // Arrancar
 console.log('✅ Servidor activo. Revisando cola cada 3 segundos...\n');
 announceStation();
-setInterval(checkAndProcess, 3000);
+setInterval(announceStation, 30000); // Latido cada 30 segundos
+setInterval(checkAndProcess, 3000); // Polling de jobs
 checkAndProcess();

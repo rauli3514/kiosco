@@ -1101,8 +1101,24 @@ function StepQueue({ jobId, event, primaryColor, onReset }) {
     `saturate(${1 + (adjustments?.saturation || 0) / 100})`,
   ].filter(Boolean).join(' ') || 'none';
 
+  if (!job && !isFallbackRendering) {
+    return (
+      <Screen style={{ textAlign: 'center', padding: '3rem' }}>
+        <Spinner size={48} />
+        <p style={{ marginTop: '1rem', color: '#fff', opacity: 0.8 }}>Conectando con la cola de impresión...</p>
+      </Screen>
+    );
+  }
+
   return (
-    <Screen style={{ textAlign: 'center', gap: '1rem', width: '100%', maxWidth: isDone ? '500px' : '420px' }}>
+    <Screen style={{ 
+      textAlign: 'center', 
+      gap: '1rem', 
+      width: '100%', 
+      maxWidth: isDone ? '540px' : '420px',
+      minHeight: isDone ? 'auto' : '450px',
+      justifyContent: 'center'
+    }}>
       
       {!isDone && !isError && (
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
@@ -1175,9 +1191,15 @@ function StepQueue({ jobId, event, primaryColor, onReset }) {
           <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
             
             {/* Foto Final */}
-            <div style={{ flex: 1 }}>
-              <img src={job?.final_image_url} alt="Tu foto"
-                style={{ width: '100%', borderRadius: '1rem', boxShadow: '0 20px 40px rgba(0,0,0,0.6)', border: '4px solid #fff' }} />
+            <div style={{ flex: 1, minWidth: '240px' }}>
+              {job?.final_image_url ? (
+                <img src={job.final_image_url} alt="Tu foto"
+                  style={{ width: '100%', borderRadius: '1rem', boxShadow: '0 20px 40px rgba(0,0,0,0.6)', border: '4px solid #fff' }} />
+              ) : (
+                <div style={{ width: '100%', aspectRatio: '2/3', background: 'rgba(255,255,255,0.1)', borderRadius: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Spinner />
+                </div>
+              )}
               <div style={{ marginTop: '1.5rem' }}>
                  <Btn color={primaryColor} onClick={onReset}>🔄 SACAR OTRA FOTO</Btn>
               </div>

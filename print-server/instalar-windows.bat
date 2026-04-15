@@ -42,7 +42,12 @@ if not exist ".env" (
 
 :: ── 4. Instalar dependencias ──────────────────────────────────────
 echo.
-echo [3/4] Instalando dependencias (puede tardar 1-2 minutos)...
+echo [3/4] Eliminando dependencias de Mac si existen...
+if exist "node_modules" rmdir /S /Q "node_modules"
+if exist "package-lock.json" del /f /q "package-lock.json"
+
+echo.
+echo Instalando dependencias limpias para Windows (puede tardar 1-2 minutos)...
 call npm install
 if %errorlevel% neq 0 (
     echo.
