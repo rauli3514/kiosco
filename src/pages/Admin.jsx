@@ -605,6 +605,16 @@ export default function Admin() {
                             <span style={{fontWeight: 'bold', fontSize: '0.9rem'}}>Habilitar Impresión</span>
                             <input type="checkbox" checked={selectedEvent.enable_print !== false} onChange={e => updateEventConfigBulk({ enable_print: e.target.checked })} style={{width: 20, height: 20}} />
                           </div>
+                          
+                          {selectedEvent.enable_print !== false && (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#ecfdf5', padding: '0.75rem', borderRadius: '0.5rem', marginTop: '0.75rem' }}>
+                              <div>
+                                <span style={{fontWeight: 'bold', fontSize: '0.9rem', display: 'block', color: '#065f46'}}>Lanzar Impresión Automática</span>
+                                <span style={{fontSize: '0.7rem', color: '#059669'}}>Imprime directamente al tomar la foto sin esperar confirmación</span>
+                              </div>
+                              <input type="checkbox" checked={!!selectedEvent.print_auto_start} onChange={e => updateEventConfigBulk({ print_auto_start: e.target.checked })} style={{width: 20, height: 20, accentColor: '#059669'}} />
+                            </div>
+                          )}
                         </div>
                       </div>
 
