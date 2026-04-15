@@ -665,6 +665,7 @@ export default function Admin() {
                               <p style={{ fontSize: '0.75rem', color: '#16a34a', marginTop: '0.3rem' }}>✓ {selectedEvent.selected_printer_name}</p>
                             )}
                           </div>
+                        </div>
 
                         {/* Formato de papel — tarjetas visuales */}
                         <div style={{ marginBottom: '1.5rem' }}>
