@@ -1287,15 +1287,15 @@ export default function Booth() {
   };
 
   const handleMoveSticker = (id, x, y) => {
-    setStickers(stickers.map(s => s.id === id ? { ...s, x, y } : s));
+    setStickers(prev => prev.map(s => s.id === id ? { ...s, x, y } : s));
   };
 
   const handleScaleSticker = (id, delta) => {
-    setStickers(stickers.map(s => s.id === id ? { ...s, scale: Math.max(0.4, (s.scale || 1) + delta) } : s));
+    setStickers(prev => prev.map(s => s.id === id ? { ...s, scale: Math.max(0.4, (s.scale || 1) + delta) } : s));
   };
 
   const handleRemoveSticker = (id) => {
-    setStickers(stickers.filter(s => s.id !== id));
+    setStickers(prev => prev.filter(s => s.id !== id));
   };
 
   // ─── Enviar job al backend (NO genera imagen aquí) ───────────────

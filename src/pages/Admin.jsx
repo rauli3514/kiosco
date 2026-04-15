@@ -314,7 +314,13 @@ export default function Admin() {
             <div style={{ background: '#fff', padding: '1rem 2rem', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '2rem', alignItems: 'center' }}>
               <div>
                 <h1 style={{ margin: 0, fontSize: '1.25rem' }}>{selectedEvent.title}</h1>
-                <a href={`/${selectedEvent.slug}`} target="_blank" style={{ color: '#3b82f6', fontSize: '0.8rem', textDecoration: 'none' }}>
+                <a 
+                  href={window.location.hostname === 'localhost' 
+                    ? `/${selectedEvent.slug}` 
+                    : `/kiosco/?/${selectedEvent.slug}`} 
+                  target="_blank" 
+                  style={{ color: '#3b82f6', fontSize: '0.8rem', textDecoration: 'none' }}
+                >
                   Ver Kiosco en Vivo ↗
                 </a>
               </div>
