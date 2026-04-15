@@ -236,10 +236,22 @@ const sendToPrinter = (filePath, printerName, paperSize, scale = 100, ox = 0, oy
     const s = scale !== 100 ? `-o scaling=${scale}` : '';
     cmd = `lpr ${p} ${m} ${s} "${filePath}"`;
   } else {
-    // Windows: Usar PowerShell para una impresión más silenciosa y directa
-    // Si hay impresora específica, la seteamos por defecto temporalmente
-    const setPrinter = printerName ? `(New-Object -ComObject WScript.Network).SetDefaultPrinter('${printerName}');` : '';
-    cmd = `powershell -Command "${setPrinter} Start-Process -FilePath '${filePath}' -Verb Print"`;
+    // Windows: Método 100% silencioso e invisible usando System.Drawing
+    const psCommand = `
+      $printer = '${printerName || ''}';
+      if (-not $printer) { $printer = (Get-CimInstance Win32_Printer -Filter 'Default = True').Name }
+      Add-Type -AssemblyName System.Drawing;
+      $doc = New-Object System.Drawing.Printing.PrintDocument;
+      $doc.PrinterSettings.PrinterName = $printer;
+      $doc.add_PrintPage({
+        param($s, $e);
+        $img = [System.Drawing.Image]::FromFile('${filePath.replace(/\\/g, '\\\\')}');
+        $e.Graphics.DrawImage($img, 0, 0);
+        $img.Dispose();
+      });
+      $doc.Print();
+    `.replace(/\n/g, ' ').trim();
+    cmd = `powershell -Command "${psCommand}"`;
   }
   
   console.log(`   🖨️  Ejecutando: ${cmd}`);
