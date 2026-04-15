@@ -641,7 +641,7 @@ export default function Admin() {
                           ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                               {stations.map(s => {
-                                const isOnline = new Date() - new Date(s.last_seen) < 30000;
+                                const isOnline = new Date() - new Date(s.last_seen) < 120000;
                                 return (
                                   <div key={s.id} style={{ background: '#f8fafc', border: `1px solid ${isOnline ? '#86efac' : '#fca5a5'}`, borderRadius: '0.75rem', padding: '0.875rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                     <div style={{ width: 10, height: 10, borderRadius: '50%', background: isOnline ? '#16a34a' : '#dc2626', flexShrink: 0, boxShadow: isOnline ? '0 0 6px #16a34a' : 'none' }} />

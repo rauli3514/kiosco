@@ -421,9 +421,16 @@ function StepWelcome({ event, onStart }) {
         {event.welcome_subtitle || 'Llevate tu recuerdo impreso'}
       </p>
       <div style={{ width: '100%', zIndex: 1 }}>
-        <Btn color={c} large onClick={onStart}>
+        <Btn color={c} large onClick={onStart} style={{ animation: 'pulseWelcomeBtn 2s infinite' }}>
           📸 {event.welcome_button_text || 'SACAR MI FOTO'}
         </Btn>
+        <style>{`
+          @keyframes pulseWelcomeBtn {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 ${c}80; }
+            50% { transform: scale(1.05); box-shadow: 0 0 30px 10px ${c}00; }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 ${c}00; }
+          }
+        `}</style>
       </div>
     </Screen>
   );
@@ -597,7 +604,7 @@ function StepCaptureBooth({ format, photos, primaryColor, onPhotoAdded, onContin
       ) : (
         <div style={{ width: '100%', aspectRatio: '3/4', borderRadius: '1rem', overflow: 'hidden', backgroundColor: '#111', marginBottom: '1rem', display: 'flex', flexWrap: 'wrap', gap: 2, padding: 2 }}>
            {photos.map((p, i) => (
-              <img key={i} src={p.preview} style={{ flex: 1, minWidth: '48%', height: '50%', objectFit: 'cover', borderRadius: '0.5rem' }} />
+              <img key={i} src={p.preview} style={{ flex: 1, minWidth: '48%', height: count === 1 ? '100%' : '50%', objectFit: 'cover', borderRadius: '0.5rem' }} />
            ))}
         </div>
       )}
@@ -712,8 +719,8 @@ function StepPreview({ format, photos, filterName, adjustments, stickers, primar
           maxLength={30}
           style={{
             width: '100%', boxSizing: 'border-box', padding: '0.875rem', borderRadius: '0.75rem',
-            border: '2px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)',
-            color: '#fff', fontSize: '1rem', textAlign: 'center', fontWeight: 'bold'
+            border: '2px solid rgba(255,255,255,0.8)', background: '#fff',
+            color: '#0f172a', fontSize: '1.2rem', textAlign: 'center', fontWeight: 'bold'
           }}
         />
       </div>
