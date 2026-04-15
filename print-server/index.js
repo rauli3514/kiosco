@@ -236,17 +236,33 @@ const sendToPrinter = (filePath, printerName, paperSize, scale = 100, ox = 0, oy
     const s = scale !== 100 ? `-o scaling=${scale}` : '';
     cmd = `lpr ${p} ${m} ${s} "${filePath}"`;
   } else {
-    // Windows: Método 100% silencioso e invisible usando System.Drawing
+    // Windows: Método 100% silencioso e invisible usando    // MÉTODO 100% INVISIBLE CON CALIBRACIÓN
+    const settings = { paperSize, scale, offsetX: ox, offsetY: oy };
+    const { paperSize: pSizeVal = '4x6', scale: sVal = 100, offsetX = 0, offsetY = 0 } = settings;
     const psCommand = `
       $printer = '${printerName || ''}';
       if (-not $printer) { $printer = (Get-CimInstance Win32_Printer -Filter 'Default = True').Name }
+      
       Add-Type -AssemblyName System.Drawing;
       $doc = New-Object System.Drawing.Printing.PrintDocument;
       $doc.PrinterSettings.PrinterName = $printer;
+
+      # Intentar ajustar el tamaño del papel si existe en el driver
+      $pSize = $doc.PrinterSettings.PaperSizes | Where-Object { $_.PaperName -like '*${pSizeVal}*' } | Select-Object -First 1;
+      if ($pSize) { $doc.DefaultPageSettings.PaperSize = $pSize; }
+      
       $doc.add_PrintPage({
         param($s, $e);
         $img = [System.Drawing.Image]::FromFile('${filePath.replace(/\\/g, '\\\\')}');
-        $e.Graphics.DrawImage($img, 0, 0);
+        
+        # Calcular dimensiones con escala
+        $w = $e.PageBounds.Width * (${sVal} / 100);
+        $h = $e.PageBounds.Height * (${sVal} / 100);
+        
+        # Dibujar con Offsets (Margen X / Y)
+        $destRect = New-Object System.Drawing.Rectangle(${offsetX}, ${offsetY}, [int]$w, [int]$h);
+        $e.Graphics.DrawImage($img, $destRect);
+        
         $img.Dispose();
       });
       $doc.Print();
@@ -304,17 +320,23 @@ const checkAndProcess = async () => {
     }
 
     // ── B. Buscar jobs para IMPRIMIR ────────────────────────────
-    const { data: printJobs } = await supabase
+    const { data: printJobs, error: printQueryErr } = await supabase
       .from('print_jobs')
       .select('*, events(selected_printer_name, selected_paper_size, print_scale, print_offset_x, print_offset_y)')
       .eq('status', 'approved_for_print')
       .order('created_at', { ascending: true })
       .limit(1);
 
+    if (printQueryErr) {
+      console.error('❌ Error buscando jobs para imprimir:', printQueryErr.message);
+    }
+
     if (printJobs && printJobs.length > 0) {
       const job = printJobs[0];
       const ev = job.events || {};
-      console.log(`\n🖨️  Job de impresión encontrado: ${job.id}`);
+      console.log(`\n🖨️  ¡Trabajo de impresión encontrado! (ID: ${job.id})`);
+      console.log(`   Impresora configurada: ${ev.selected_printer_name || 'PREDETERMINADA'}`);
+      
       await supabase.from('print_jobs').update({ status: 'printing', updated_at: new Date().toISOString() }).eq('id', job.id);
 
       try {
