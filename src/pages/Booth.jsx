@@ -1598,7 +1598,7 @@ export default function Booth() {
         {step === 'formato'  && <StepFormato templates={templates} primaryColor={primary}
           onSelect={fmt => { setFormat(fmt); setPhotos([]); setStep('upload'); }}
           onBack={() => setStep('welcome')} />}
-        {step === 'upload'   && format && <StepUpload format={format} photos={photos} primaryColor={primary}
+        {step === 'upload'   && format && <StepCaptureBooth format={format} photos={photos} primaryColor={primary}
           onPhotoAdded={addPhoto}
           onContinue={() => setStep('editor')}
           onBack={() => { setPhotos([]); setStep(templates.length > 1 ? 'formato' : 'welcome'); }} />}
