@@ -444,38 +444,38 @@ function StepFormato({ templates, primaryColor, onSelect, onBack }) {
   return (
     <Screen>
       <StepDots current={1} total={3} />
-      <H2>¿Qué formato querés?</H2>
-      <Hint>Elegí cuántas fotos tendrá tu impresión</Hint>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
+      <H2>Elegí tu plantilla</H2>
+      <Hint>Así va a quedar tu foto impresa</Hint>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', width: '100%', marginBottom: '1.5rem' }}>
         {options.map(opt => {
           const frames = opt.frames || PRESETS[opt.count] || PRESETS[1];
           return (
             <button key={opt.id} onClick={() => onSelect(opt)} style={{
-              display: 'flex', alignItems: 'center', gap: '1rem',
-              background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
-              padding: '0.875rem 1rem', borderRadius: '0.75rem', color: '#fff',
-              cursor: 'pointer', textAlign: 'left',
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              background: 'rgba(255,255,255,0.07)', border: '2px solid rgba(255,255,255,0.15)',
+              padding: '0.75rem', borderRadius: '1rem', color: '#fff',
+              cursor: 'pointer', transition: 'transform 0.2s, border 0.2s',
             }}>
-              {/* Mini preview */}
+              {/* Preview más grande */}
               <div style={{
-                width: 52, height: 72, backgroundColor: '#111', borderRadius: '0.25rem',
-                position: 'relative', flexShrink: 0, overflow: 'hidden',
-                backgroundImage: opt.template?.base_image_url ? `url('${opt.template.base_image_url}')` : 'none',
-                backgroundSize: 'cover',
+                width: '100%', aspectRatio: '2/3', backgroundColor: '#111', borderRadius: '0.5rem',
+                position: 'relative', overflow: 'hidden', marginBottom: '0.75rem',
+                backgroundImage: opt.template?.base_image_url ? `url('${opt.template.base_image_url}')` : 'linear-gradient(45deg, #1f2937, #111827)',
+                backgroundSize: 'cover', backgroundPosition: 'center',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)'
               }}>
                 {frames.map((f, i) => (
                   <div key={i} style={{
                     position: 'absolute', left: `${f.x}%`, top: `${f.y}%`,
                     width: `${f.w || f.width}%`, height: `${f.h || f.height}%`,
-                    background: '#fff', opacity: 0.85,
-                  }} />
+                    background: 'rgba(255,255,255,0.9)', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#666', fontSize: '1.5rem', fontWeight: 'bold'
+                  }}>📷</div>
                 ))}
               </div>
-              <div>
-                <div style={{ fontWeight: 700 }}>{opt.label}</div>
-                <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>{opt.count} {opt.count === 1 ? 'pose' : 'poses'}</div>
-              </div>
-              <span style={{ marginLeft: 'auto', opacity: 0.5 }}>›</span>
+              <div style={{ fontWeight: 800, fontSize: '0.9rem', textAlign: 'center' }}>{opt.label}</div>
+              <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{opt.count} {opt.count === 1 ? 'pose' : 'poses'}</div>
             </button>
           );
         })}
@@ -488,16 +488,72 @@ function StepFormato({ templates, primaryColor, onSelect, onBack }) {
 // ═══════════════════════════════════════════════════════════════════
 // STEP 3 – Carga de fotos
 // ═══════════════════════════════════════════════════════════════════
-function StepUpload({ format, photos, primaryColor, onPhotoAdded, onContinue, onBack }) {
-  const cameraRef = useRef(); const galleryRef = useRef();
+function StepCaptureBooth({ format, photos, primaryColor, onPhotoAdded, onContinue, onBack }) {
+  const cameraRef = useRef(); 
+  const canvasRef = useRef();
+  const [stream, setStream] = useState(null);
+  const [countdown, setCountdown] = useState(null);
+  const [flash, setFlash] = useState(false);
   const count = format.count;
   const done = photos.length >= count;
 
+  useEffect(() => {
+    if (done) {
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
+      .then(s => {
+        setStream(s);
+        if (cameraRef.current) cameraRef.current.srcObject = s;
+      })
+      .catch(err => console.error("No se pudo acceder a la cámara", err));
+
+    return () => {
+      if (stream) stream.getTracks().forEach(t => t.stop());
+    };
+  }, [done]);
+
+  const snapPhoto = () => {
+    if (countdown !== null || done) return;
+    let c = 3;
+    setCountdown(c);
+    const interval = setInterval(() => {
+      c--;
+      if (c > 0) {
+        setCountdown(c);
+      } else {
+        clearInterval(interval);
+        setCountdown(null);
+        setFlash(true);
+        setTimeout(() => setFlash(false), 200);
+
+        if (cameraRef.current && canvasRef.current) {
+          const video = cameraRef.current;
+          const canvas = canvasRef.current;
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext('2d');
+          
+          // Espejar para que coincida con la cámara frontal
+          ctx.translate(canvas.width, 0);
+          ctx.scale(-1, 1);
+          ctx.drawImage(video, 0, 0);
+          
+          canvas.toBlob(blob => {
+            const file = new File([blob], `photo_${Date.now()}.jpg`, { type: 'image/jpeg' });
+            Object.assign(file, { preview: URL.createObjectURL(file) });
+            onPhotoAdded(file);
+          }, 'image/jpeg', 0.95);
+        }
+      }
+    }, 1000);
+  };
+
   return (
-    <Screen>
+    <Screen style={{ position: 'relative', overflow: 'hidden' }}>
       <StepDots current={2} total={3} />
-      {/* Barra de progreso */}
-      <div style={{ display: 'flex', gap: '0.4rem', width: '100%', marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', gap: '0.4rem', width: '100%', marginBottom: '1rem', zIndex: 2 }}>
         {Array.from({ length: count }).map((_, i) => (
           <div key={i} style={{
             flex: 1, height: 4, borderRadius: 99,
@@ -506,75 +562,109 @@ function StepUpload({ format, photos, primaryColor, onPhotoAdded, onContinue, on
           }} />
         ))}
       </div>
-      <H2>{done ? '¡Todas listas!' : `Foto ${photos.length + 1} de ${count}`}</H2>
-      <Hint>{done ? 'Revisá antes de continuar.' : `${count - photos.length} foto${count - photos.length > 1 ? 's' : ''} más para tu impresión`}</Hint>
+      
+      <H2 style={{ zIndex: 2 }}>{done ? '¡Todas listas!' : `Foto ${photos.length + 1} de ${count}`}</H2>
 
-      {/* Slots de fotos */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'center', marginBottom: '1.5rem', width: '100%' }}>
+      {/* Slots de miniaturas arriba de la cámara */}
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', zIndex: 2 }}>
         {Array.from({ length: count }).map((_, i) => (
           <div key={i} style={{
-            width: count <= 2 ? 'calc(50% - 0.375rem)' : 88, aspectRatio: '3/4',
-            borderRadius: '0.5rem', overflow: 'hidden',
-            border: photos[i] ? `2px solid ${primaryColor}` : '2px dashed rgba(255,255,255,0.2)',
-            background: 'rgba(0,0,0,0.2)', position: 'relative',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 44, height: 60, borderRadius: '4px', overflow: 'hidden',
+            border: photos[i] ? `2px solid ${primaryColor}` : '2px dashed rgba(255,255,255,0.3)',
+            background: 'rgba(0,0,0,0.4)', position: 'relative',
           }}>
-            {photos[i] ? (
-              <>
-                <img src={photos[i].preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                <div style={{
-                  position: 'absolute', top: 4, right: 4, background: '#10b981',
-                  borderRadius: '50%', width: 20, height: 20,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '0.65rem', fontWeight: 700, color: '#fff',
-                }}>✓</div>
-              </>
-            ) : (
-              <span style={{ fontSize: '1.75rem', opacity: 0.3 }}>{i + 1}</span>
-            )}
+            {photos[i] && <img src={photos[i].preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
           </div>
         ))}
       </div>
 
       {!done ? (
-        <>
-          <Btn color={primaryColor} large onClick={() => cameraRef.current?.click()}>📷 Tomar Foto</Btn>
-          <BtnGhost onClick={() => galleryRef.current?.click()}>🖼 Subir desde Galería</BtnGhost>
-          <input ref={cameraRef} type="file" accept="image/*" capture="environment"
-            onChange={e => { const f = e.target.files[0]; if (f) { onPhotoAdded(f); e.target.value = ''; }}}
-            style={{ display: 'none' }} />
-          <input ref={galleryRef} type="file" accept="image/*"
-            onChange={e => { const f = e.target.files[0]; if (f) { onPhotoAdded(f); e.target.value = ''; }}}
-            style={{ display: 'none' }} />
-        </>
+        <div style={{ width: '100%', position: 'relative', aspectRatio: '3/4', borderRadius: '1rem', overflow: 'hidden', backgroundColor: '#000', marginBottom: '1rem', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+          <video
+            ref={cameraRef} autoPlay playsInline muted
+            style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
+          />
+          {countdown !== null && (
+            <div style={{
+              position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              backgroundColor: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '6rem', fontWeight: 900, textShadow: '0 4px 20px rgba(0,0,0,0.8)'
+            }}>
+              {countdown}
+            </div>
+          )}
+          <canvas ref={canvasRef} style={{ display: 'none' }} />
+        </div>
+      ) : (
+        <div style={{ width: '100%', aspectRatio: '3/4', borderRadius: '1rem', overflow: 'hidden', backgroundColor: '#111', marginBottom: '1rem', display: 'flex', flexWrap: 'wrap', gap: 2, padding: 2 }}>
+           {photos.map((p, i) => (
+              <img key={i} src={p.preview} style={{ flex: 1, minWidth: '48%', height: '50%', objectFit: 'cover', borderRadius: '0.5rem' }} />
+           ))}
+        </div>
+      )}
+
+      {!done ? (
+        <Btn color={primaryColor} large onClick={snapPhoto} disabled={countdown !== null}>
+          📸 ¡Disparar!
+        </Btn>
       ) : (
         <Btn color={primaryColor} large onClick={onContinue}>Elegir filtros →</Btn>
       )}
+      
       <BtnBack onClick={onBack} />
+
+      {/* Efecto visual de flash blanco */}
+      {flash && (
+        <div style={{
+          position: 'fixed', inset: 0, backgroundColor: '#fff', zIndex: 9999,
+          animation: 'flashAnim 0.8s ease-out forwards', pointerEvents: 'none'
+        }} />
+      )}
+      <style>{`
+        @keyframes flashAnim {
+          0% { opacity: 1; }
+          100% { opacity: 0; }
+        }
+      `}</style>
     </Screen>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// STEP 4 – Editor: filtros + ajustes (SOLO CSS preview)
-// ═══════════════════════════════════════════════════════════════════
-function StepEditor({ format, photos, filterName, adjustments, onFilterChange, onAdjustChange, onContinue, onBack, primaryColor }) {
+function StepPreview({ format, photos, filterName, adjustments, stickers, primaryColor, onConfirm, onBack, isSubmitting }) {
+  const [guestName, setGuestName] = useState('');
   const frames = format.frames || PRESETS[format.count] || PRESETS[1];
   const activeFilter = FILTERS.find(f => f.id === filterName) || FILTERS[0];
-
-  // CSS completo del filtro
-  const fullCss = activeFilter.id !== 'none' ? activeFilter.css : 'none';
+  const fullCss = [
+    activeFilter.id !== 'none' ? activeFilter.css : '',
+    `brightness(${1 + (adjustments.brightness || 0) / 100})`,
+    `contrast(${1 + (adjustments.contrast || 0) / 100})`,
+    `saturate(${1 + (adjustments.saturation || 0) / 100})`,
+  ].filter(Boolean).join(' ') || 'none';
 
   return (
-    <Screen>
-      <StepDots current={3} total={3} />
-      <H2>Personaliza tu foto</H2>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', gap: '1rem', color: '#fff' }}>
+      <H2>Identificá tu foto</H2>
+      <p style={{ fontSize: '0.8rem', opacity: 0.6, margin: 0, textAlign: 'center' }}>
+        El organizador podrá entregarla más fácil
+      </p>
 
-      {/* Preview con filtro aplicado */}
+      <div style={{ width: '100%', maxWidth: 240, marginBottom: '0.5rem' }}>
+        <input 
+          type="text" 
+          placeholder="Tu Nombre (Opcional)"
+          value={guestName}
+          onChange={e => setGuestName(e.target.value)}
+          maxLength={30}
+          style={{
+            width: '100%', boxSizing: 'border-box', padding: '0.875rem', borderRadius: '0.75rem',
+            border: '2px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)',
+            color: '#fff', fontSize: '1rem', textAlign: 'center', fontWeight: 'bold'
+          }}
+        />
+      </div>
+
       <div style={{
-        width: '100%', maxWidth: 220, aspectRatio: '2/3', position: 'relative',
-        borderRadius: 8, overflow: 'hidden', boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
-        margin: '0 auto 1.25rem',
+        width: '100%', maxWidth: 240, aspectRatio: '2/3', position: 'relative',
+        borderRadius: 8, overflow: 'hidden', boxShadow: '0 20px 48px rgba(0,0,0,0.6)',
         backgroundImage: format.template?.base_image_url ? `url('${format.template.base_image_url}')` : 'none',
         backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: '#111',
       }}>
@@ -584,39 +674,42 @@ function StepEditor({ format, photos, filterName, adjustments, onFilterChange, o
             left: `${f.x}%`, top: `${f.y}%`,
             width: `${f.w || f.width}%`, height: `${f.h || f.height}%`,
             backgroundColor: '#fff', padding: '1.5%', boxSizing: 'border-box', overflow: 'hidden',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
           }}>
             {photos[i] ? (
-              <img src={photos[i].preview} alt="" style={{
-                width: '100%', height: '100%', objectFit: 'cover', display: 'block',
-                filter: fullCss, transition: 'filter 0.3s',
-              }} />
-            ) : <div style={{ width: '100%', height: '100%', background: '#e2e8f0' }} />}
+              <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                <img src={photos[i].preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: fullCss }} />
+                {/* Renderizar stickers sobre la miniatura */}
+                {(stickers || []).filter(s => s.photoIdx === i).map(s => (
+                  <div key={s.id} style={{
+                    position: 'absolute', left: `${s.x}%`, top: `${s.y}%`,
+                    transform: `translate(-50%, -50%) scale(${(s.scale || 1) * 0.4})`, 
+                    fontSize: '3.5rem', pointerEvents: 'none', zIndex: 10
+                  }}>
+                    {s.emoji}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ width: '100%', height: '100%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📷</div>
+            )}
           </div>
         ))}
+        {isSubmitting && (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem' }}>
+            <Spinner />
+            <span style={{ fontSize: '0.875rem', color: '#fff' }}>Enviando...</span>
+          </div>
+        )}
       </div>
 
-      {/* Selector de filtros */}
-      <div style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto', width: '100%', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
-        {FILTERS.map(f => (
-          <button key={f.id} onClick={() => onFilterChange(f.id)} style={{
-            flexShrink: 0, padding: '0.4rem 0.75rem', borderRadius: 99,
-            border: filterName === f.id ? `2px solid ${primaryColor}` : '2px solid rgba(255,255,255,0.2)',
-            background: filterName === f.id ? primaryColor + '33' : 'rgba(255,255,255,0.07)',
-            color: '#fff', fontSize: '0.8rem', fontWeight: filterName === f.id ? 700 : 400,
-            cursor: 'pointer', whiteSpace: 'nowrap',
-          }}>{f.label}</button>
-        ))}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: 240, marginTop: '0.5rem' }}>
+        <Btn color={primaryColor} large onClick={() => onConfirm(guestName)} disabled={isSubmitting}>
+          {isSubmitting ? 'Enviando...' : '🖨 Confirmar e Imprimir'}
+        </Btn>
+        <BtnGhost onClick={onBack} disabled={isSubmitting}>✏️ Editar</BtnGhost>
       </div>
-
-      {/* Sliders removidos a pedido del usuario. Solo quedan los pre-filtros. */}
-      
-      <Btn color={primaryColor} large onClick={onContinue} style={{ marginTop: '1rem' }}>Ver Preview Final →</Btn>
-      <BtnBack onClick={onBack} />
-
-      <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: '0.75rem', textAlign: 'center', color: '#fff' }}>
-        Los filtros se aplican en alta calidad al generar la impresión
-      </p>
-    </Screen>
+    </div>
   );
 }
 
@@ -1007,15 +1100,65 @@ function StepQueue({ jobId, event, primaryColor, onReset }) {
   const stages = ['pending_render', 'rendering', 'pending_print', 'printing', 'completed'];
   const currentStageIdx = stages.indexOf(status);
 
+  const frames = format?.frames || PRESETS[format?.count] || PRESETS[1];
+  const activeFilter = FILTERS.find(f => f.id === filterName) || FILTERS[0];
+  const fullCss = [
+    activeFilter.id !== 'none' ? activeFilter.css : '',
+    `brightness(${1 + (adjustments?.brightness || 0) / 100})`,
+    `contrast(${1 + (adjustments?.contrast || 0) / 100})`,
+    `saturate(${1 + (adjustments?.saturation || 0) / 100})`,
+  ].filter(Boolean).join(' ') || 'none';
+
   return (
     <Screen style={{ textAlign: 'center', gap: '1rem', width: '100%', maxWidth: isDone ? '500px' : '420px' }}>
       
       {!isDone && !isError && (
-        <>
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
           <div style={{ fontSize: '2.5rem' }}>{s.emoji}</div>
-          <Spinner />
-          <H2>{isFallbackRendering ? 'Generando tu foto...' : s.label}</H2>
+          <H2>{isFallbackRendering ? 'Generando tu foto...' : 'Tu foto está en cola'}</H2>
           
+          <div style={{
+            background: 'rgba(255,255,255,0.08)', padding: '1rem', borderRadius: '1rem', 
+            border: '1px solid rgba(255,255,255,0.15)', width: '100%', position: 'relative', overflow: 'hidden'
+          }}>
+            <div style={{ fontSize: '0.8rem', opacity: 0.7, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              Mostrale este código al staff
+            </div>
+            <div style={{ fontSize: '3rem', fontWeight: 900, color: primaryColor, letterSpacing: '0.15em', margin: '0.5rem 0', textShadow: '0 4px 15px rgba(0,0,0,0.5)' }}>
+              {job?.adjustments?.short_code || '---'}
+            </div>
+            {job?.adjustments?.guest_name && job?.adjustments?.guest_name !== 'Anónimo' && (
+              <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>Para: {job.adjustments.guest_name}</div>
+            )}
+          </div>
+
+          <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#fff', opacity: 0.9 }}>
+            Retirala en el tótem de impresión 🖨️
+          </div>
+
+          {/* Preview CSS mientras espera */}
+          {format && photos?.length > 0 && (
+            <div style={{
+              width: '120px', aspectRatio: '2/3', position: 'relative',
+              borderRadius: 6, overflow: 'hidden', boxShadow: '0 10px 20px rgba(0,0,0,0.5)',
+              backgroundImage: format.template?.base_image_url ? `url('${format.template.base_image_url}')` : 'none',
+              backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: '#111',
+              marginTop: '0.5rem'
+            }}>
+              {frames.map((f, i) => (
+                <div key={i} style={{
+                  position: 'absolute', left: `${f.x}%`, top: `${f.y}%`,
+                  width: `${f.w || f.width}%`, height: `${f.h || f.height}%`,
+                  backgroundColor: '#fff', padding: '1.5%', boxSizing: 'border-box', overflow: 'hidden'
+                }}>
+                  {photos[i] && (
+                    <img src={photos[i].preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: fullCss }} />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: '4px', width: '100%', marginTop: '0.5rem' }}>
             {stages.map((st, i) => (
               <div key={st} style={{
@@ -1027,12 +1170,12 @@ function StepQueue({ jobId, event, primaryColor, onReset }) {
           </div>
           
           {queuePos && !isFallbackRendering && (
-            <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '0.75rem 1.5rem', marginTop: '0.5rem' }}>
-              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff' }}>#{queuePos}</div>
-              <div style={{ fontSize: '0.75rem', opacity: 0.6, color: '#fff' }}>en la cola</div>
+            <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '0.5rem 1rem', marginTop: '0.25rem' }}>
+              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', marginRight: '0.5rem' }}>#{queuePos}</span>
+              <span style={{ fontSize: '0.75rem', opacity: 0.6, color: '#fff' }}>en la cola de impresión</span>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {isDone && (
@@ -1276,7 +1419,7 @@ export default function Booth() {
   };
 
   // ─── Enviar job al backend (NO genera imagen aquí) ───────────────
-  const handleSubmit = async () => {
+  const handleSubmit = async (guestName) => {
     setIsSubmitting(true);
     try {
       // 1. Subir fotos RAW a Supabase Storage
@@ -1289,6 +1432,11 @@ export default function Booth() {
         photoUrls.push(urlData.publicUrl);
       }
 
+      // Generate session code
+      const sessionCode = Math.random().toString(36).substring(2,6).toUpperCase();
+      const updatedAdjustments = { ...adjustments, guest_name: guestName || 'Anónimo', short_code: sessionCode };
+      setAdjustments(updatedAdjustments);
+
       // 2. Crear print_job con configuración (NO imagen final)
       const frames = format.frames || PRESETS[format.count] || PRESETS[1];
       const { data: jobData, error: jobErr } = await supabase.from('print_jobs').insert([{
@@ -1296,7 +1444,7 @@ export default function Booth() {
         template_id: format.template?.id || null,
         raw_photo_urls: photoUrls,
         filter_name: filterName,
-        adjustments,
+        adjustments: updatedAdjustments,
         frames_config: frames,
         base_image_url: format.template?.base_image_url || null,
         status: 'pending_render',
