@@ -1249,6 +1249,31 @@ function StepQueue({ jobId, event, primaryColor, onReset }) {
 
       {isError && <Btn color="#ef4444" onClick={onReset}>Reintentar</Btn>}
 
+      {isDone && (
+        <div style={{ width: '100%', animation: 'fadeIn 0.5s ease-out' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>✨</div>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '0.25rem', color: '#fff' }}>¡FOTO LISTA!</h2>
+          <p style={{ color: '#94a3b8', marginBottom: '1.5rem' }}>Ya puedes descargarla o compartirla</p>
+          
+          <div style={{ 
+            aspectRatio: '2/3', background: '#0a0a0a', borderRadius: '1rem', 
+            overflow: 'hidden', marginBottom: '1.5rem', boxShadow: '0 15px 35px rgba(0,0,0,0.7)',
+            border: '2px solid rgba(255,255,255,0.1)'
+          }}>
+            <img src={job?.final_image_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Final" />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <Btn color={primaryColor} style={{ padding: '1.2rem', fontSize: '1.1rem' }} onClick={() => setShowQRModal(true)}>
+              📥 DESCARGAR / COMPARTIR QR
+            </Btn>
+            <Btn style={{ background: 'rgba(255,255,255,0.05)', color: '#fff' }} onClick={onReset}>
+              VOLVER AL INICIO
+            </Btn>
+          </div>
+        </div>
+      )}
+
       {/* MODAL DEL QR */}
       {showQRModal && (
         <div style={{
