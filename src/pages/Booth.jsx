@@ -1113,64 +1113,39 @@ function StepQueue({ jobId, event, primaryColor, onReset }) {
   return (
     <Screen style={{ 
       textAlign: 'center', 
-      gap: '1rem', 
+      gap: '1.5rem', 
       width: '100%', 
-      maxWidth: isDone ? '540px' : '420px',
+      maxWidth: isDone ? '500px' : '420px',
       minHeight: isDone ? 'auto' : '450px',
-      justifyContent: 'center'
+      justifyContent: 'center',
+      padding: '2.5rem'
     }}>
       
       {!isDone && !isError && (
-        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ fontSize: '2.5rem' }}>{s.emoji}</div>
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
+          <div style={{ fontSize: '3.5rem', animation: 'pulse 2s infinite' }}>{s.emoji}</div>
           <H2>{isFallbackRendering ? 'Generando tu foto...' : 'Tu foto está en cola'}</H2>
           
           <div style={{
-            background: 'rgba(255,255,255,0.08)', padding: '1rem', borderRadius: '1rem', 
-            border: '1px solid rgba(255,255,255,0.15)', width: '100%', position: 'relative', overflow: 'hidden'
+            background: 'rgba(255,255,255,0.08)', padding: '1.5rem', borderRadius: '1.5rem', 
+            border: '1px solid rgba(255,255,255,0.15)', width: '100%', textAlign: 'center'
           }}>
-            <div style={{ fontSize: '0.8rem', opacity: 0.7, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            <div style={{ fontSize: '0.8rem', opacity: 0.7, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>
               Mostrale este código al staff
             </div>
-            <div style={{ fontSize: '3rem', fontWeight: 900, color: primaryColor, letterSpacing: '0.15em', margin: '0.5rem 0', textShadow: '0 4px 15px rgba(0,0,0,0.5)' }}>
+            <div style={{ fontSize: '3.5rem', fontWeight: 900, color: primaryColor, letterSpacing: '0.2em', textShadow: '0 4px 15px rgba(0,0,0,0.5)' }}>
               {job?.adjustments?.short_code || '---'}
             </div>
-            {job?.adjustments?.guest_name && job?.adjustments?.guest_name !== 'Anónimo' && (
-              <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>Para: {job.adjustments.guest_name}</div>
-            )}
           </div>
 
-          <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#fff', opacity: 0.9 }}>
-            Retirala en el tótem de impresión 🖨️
+          <div style={{ fontSize: '1rem', fontWeight: 600, color: '#fff', opacity: 0.9 }}>
+            Escaneá el QR al finalizar para descargar 📥
           </div>
 
-          {/* Preview CSS mientras espera */}
-          {format && photos?.length > 0 && (
-            <div style={{
-              width: '120px', aspectRatio: '2/3', position: 'relative',
-              borderRadius: 6, overflow: 'hidden', boxShadow: '0 10px 20px rgba(0,0,0,0.5)',
-              backgroundImage: format.template?.base_image_url ? `url('${format.template.base_image_url}')` : 'none',
-              backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: '#111',
-              marginTop: '0.5rem'
-            }}>
-              {frames.map((f, i) => (
-                <div key={i} style={{
-                  position: 'absolute', left: `${f.x}%`, top: `${f.y}%`,
-                  width: `${f.w || f.width}%`, height: `${f.h || f.height}%`,
-                  backgroundColor: '#fff', padding: '1.5%', boxSizing: 'border-box', overflow: 'hidden'
-                }}>
-                  {photos[i] && (
-                    <img src={photos[i].preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: fullCss }} />
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', gap: '4px', width: '100%', marginTop: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '6px', width: '100%', marginTop: '1rem' }}>
             {stages.map((st, i) => (
               <div key={st} style={{
-                flex: 1, height: 4, borderRadius: 99,
+                flex: 1, height: 6, borderRadius: 99,
                 background: i <= currentStageIdx ? primaryColor : 'rgba(255,255,255,0.15)',
                 transition: 'background 0.5s',
               }} />
@@ -1178,9 +1153,9 @@ function StepQueue({ jobId, event, primaryColor, onReset }) {
           </div>
           
           {queuePos && !isFallbackRendering && (
-            <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '0.5rem 1rem', marginTop: '0.25rem' }}>
-              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', marginRight: '0.5rem' }}>#{queuePos}</span>
-              <span style={{ fontSize: '0.75rem', opacity: 0.6, color: '#fff' }}>en la cola de impresión</span>
+            <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '0.6rem 1.2rem' }}>
+              <span style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', marginRight: '0.5rem' }}>#{queuePos}</span>
+              <span style={{ fontSize: '0.8rem', opacity: 0.6, color: '#fff' }}>en la cola</span>
             </div>
           )}
         </div>
