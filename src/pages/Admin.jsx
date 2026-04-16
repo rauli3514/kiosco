@@ -1088,7 +1088,6 @@ export default function Admin() {
                             <button onClick={() => loadPreset('grid4')} style={{ padding: '0.5rem', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '0.25rem', cursor: 'pointer' }}>Grid (4)</button>
                           </div>
                         </div>
-
                         <h3 style={{ margin: '2rem 0 1rem 0' }}>Posición de las Fotos</h3>
                         <p style={{ fontSize: '0.8rem', color: '#64748b' }}>Define dónde aparecerán las fotos (con borde blanco) ENCIMA del fondo de diseño. Usa los Presets de arriba o edita manualmente.</p>
                         
