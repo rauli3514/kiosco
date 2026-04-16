@@ -1086,7 +1086,7 @@ function StepQueue({ jobId, event, primaryColor, onReset }) {
   const s = JOB_STATUS[status] || JOB_STATUS.pending_render;
   
   // Modificación clave: Mostramos los botones si ya hay imagen final, aunque falte imprimir
-  const isDone = status === 'completed' || (status === 'pending_print') || (status === 'printing');
+  const isDone = ['approved_for_print', 'pending_print', 'printing', 'completed'].includes(status);
   const isError = status === 'error';
 
   const stages = ['pending_render', 'rendering', 'pending_print', 'printing', 'completed'];

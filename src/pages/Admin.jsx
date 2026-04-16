@@ -651,9 +651,30 @@ export default function Admin() {
                                         {(s.available_printers || []).length} impresora(s) · última actividad: {new Date(s.last_seen).toLocaleTimeString()}
                                       </div>
                                     </div>
-                                    <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.2rem 0.6rem', borderRadius: '99px', background: isOnline ? '#dcfce7' : '#fee2e2', color: isOnline ? '#166534' : '#991b1b' }}>
-                                      {isOnline ? 'EN LÍNEA' : 'DESCONECTADO'}
-                                    </span>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                      <button 
+                                        onClick={async () => {
+                                          const p = selectedEvent.selected_printer_name;
+                                          if(!p) return alert('Selecciona primero la impresora en el desplegable de abajo.');
+                                          await supabase.from('print_jobs').insert([{ event_id: selectedEvent.id, status: 'command_config', adjustments: { command: 'OPEN_PROPERTIES', printer: p } }]);
+                                          alert('🚀 Orden de apertura enviada a Windows');
+                                        }}
+                                        style={{ padding: '0.4rem 0.6rem', borderRadius: '0.5rem', background: '#3b82f6', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold' }}
+                                      >
+                                        🔧 CONFIGURAR
+                                      </button>
+                                      <button 
+                                        onClick={async () => {
+                                          if(confirm('¿Eliminar esta estación?')) {
+                                            await supabase.from('printer_stations').delete().eq('id', s.id);
+                                            fetchStations();
+                                          }
+                                        }}
+                                        style={{ padding: '0.4rem 0.6rem', borderRadius: '0.5rem', background: '#fee2e2', color: '#dc2626', border: 'none', cursor: 'pointer' }}
+                                      >
+                                        🗑️
+                                      </button>
+                                    </div>
                                   </div>
                                 );
                               })}

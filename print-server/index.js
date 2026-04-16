@@ -278,7 +278,17 @@ const checkAndProcess = async () => {
   if (isWorking) return;
   isWorking = true;
   try {
-    // El latido ahora corre por fuera en un intervalo fijo
+    // 0. Comandos de Sistema (Abrir Panel de Impresora Remotamente)
+    const { data: cJobs } = await supabase.from('print_jobs').select('*').eq('status', 'command_config').limit(1);
+    if (cJobs && cJobs.length > 0) {
+        const cmdJob = cJobs[0];
+        const pName = cmdJob.adjustments?.printer;
+        if (pName) {
+            console.log(`\n⚙️  Abriendo Panel de Windows para: ${pName}`);
+            exec(`rundll32.exe printui.dll,PrintUIEntry /p /n "${pName}"`);
+        }
+        await supabase.from('print_jobs').delete().eq('id', cmdJob.id);
+    }
 
     // ── A. Buscar jobs para RENDERIZAR (ya implementado arriba) ──
     const { data: renderJobs } = await supabase
